@@ -1,20 +1,20 @@
-from typing import Any, Callable, Dict, Optional
-import os
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import Optional
+from typing import Dict
 
 import torch
-from peft import PeftConfig, PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, pipeline
-from jinja2 import Template
-
 from guardrails.validator_base import (
     FailResult,
     PassResult,
     ValidationResult,
     Validator,
     register_validator,
+)
+from jinja2 import Template
+from peft import PeftConfig, PeftModel
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+    pipeline,
 )
 
 HALLUCINATION_EVAL_BASE = """
@@ -29,6 +29,7 @@ HALLUCINATION_EVAL_BASE = """
         ####END INFO####
         Based on the information provided is the model output a hallucination? Respond with only "yes" or "no"
 """
+
 
 @register_validator(name="guardrails/grounded-ai-hallucination", data_type="string")
 class ValidatorTemplate(Validator):
@@ -46,6 +47,7 @@ class ValidatorTemplate(Validator):
         arg_1 (string): {Description of the argument here}
         arg_2 (string): {Description of the argument here}
     """  # noqa
+
     BASE_MODEL_ID = "microsoft/Phi-3-mini-4k-instruct"
     GROUNDEDAI_EVAL_ID = "grounded-ai/phi3.5-hallucination-judge"
 
@@ -76,7 +78,9 @@ class ValidatorTemplate(Validator):
         }
         if self.quantization:
             model_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
-        base_model = AutoModelForCausalLM.from_pretrained(self.BASE_MODEL_ID, **model_kwargs)
+        base_model = AutoModelForCausalLM.from_pretrained(
+            self.BASE_MODEL_ID, **model_kwargs
+        )
 
         self.base_model = base_model
         self.tokenizer = tokenizer
@@ -124,12 +128,13 @@ class ValidatorTemplate(Validator):
         output = pipe(messages, **generation_args)
         torch.cuda.empty_cache()
         return output[0]["generated_text"].strip().lower()
-    
 
     def validate(self, value: Dict, metadata: Dict = {}) -> ValidationResult:
         """Validates that {fill in how you validator interacts with the passed value}."""
-        hallucination = self.run_model(value['query'], value['response'], value['reference'])
-        if "yes" in hallucination: # FIXME
+        hallucination = self.run_model(
+            value["query"], value["response"], value["reference"]
+        )
+        if "yes" in hallucination:  # FIXME
             return FailResult(
                 error_message="{The provided input was classified as a hallucination}",
             )
