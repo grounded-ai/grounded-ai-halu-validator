@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Optional
 
 import torch
 from guardrails.validator_base import (
@@ -54,7 +54,7 @@ class ValidatorTemplate(Validator):
     def __init__(
         self,
         quant: bool,
-        base_prompt: str,
+        base_prompt: Optional[str] = HALLUCINATION_EVAL_BASE,
     ):
         super().__init__(quant, base_prompt)
         self._quantize = quant
@@ -102,7 +102,7 @@ class ValidatorTemplate(Validator):
         self.merge_adapter(self.GROUNDEDAI_EVAL_ID)
 
     def format_input(self, query: str, response: str, reference: str = None) -> str:
-        template = Template(HALLUCINATION_EVAL_BASE)
+        template = Template(self._base_prompt)
         rendered_prompt = template.render(
             reference=reference, query=query, response=response
         )
