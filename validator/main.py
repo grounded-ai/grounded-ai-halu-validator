@@ -32,21 +32,27 @@ HALLUCINATION_EVAL_BASE = """
 
 
 @register_validator(name="guardrails/grounded-ai-hallucination", data_type="string")
-class ValidatorTemplate(Validator):
-    """Validates that {fill in how you validator interacts with the passed value}.
+class GroundedaiHallucination(Validator):
+    """Validates whether a given response is a hallucination based on the provided query, response 
+    and optional reference.
+
+    This validator uses a fine-tuned language model by GroundedAI to determine if the response
+    is grounded in the given context or if it's a hallucination.
 
     **Key Properties**
 
-    | Property                      | Description                       |
-    | ----------------------------- | --------------------------------- |
-    | Name for `format` attribute   | `guardrails/validator_template`   |
-    | Supported data types          | `string`                          |
-    | Programmatic fix              | `None`                            |
+    | Property                      | Description                           |
+    | ----------------------------- | ------------------------------------- |
+    | Name for `format` attribute   | `guardrails/grounded-ai-hallucination`|
+    | Supported data types          | `string`                              |
+    | Programmatic fix              | `None`                                |
 
     Args:
-        arg_1 (string): {Description of the argument here}
-        arg_2 (string): {Description of the argument here}
-    """  # noqa
+        quant (bool): Whether to use quantization for the model.
+        base_prompt (Optional[str]): The base prompt template for hallucination evaluation.
+            Defaults to HALLUCINATION_EVAL_BASE.
+    """
+  # noqa
 
     BASE_MODEL_ID = "microsoft/Phi-3-mini-4k-instruct"
     GROUNDEDAI_EVAL_ID = "grounded-ai/phi3.5-hallucination-judge"
