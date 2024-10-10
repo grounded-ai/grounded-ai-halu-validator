@@ -62,9 +62,12 @@ class GroundedaiHallucination(Validator):
         quant: bool,
         base_prompt: Optional[str] = HALLUCINATION_EVAL_BASE,
     ):
-        super().__init__(quant, base_prompt)
+        super().__init__()
         self._quantize = quant
         self._base_prompt = base_prompt
+        self._base_model = None
+        self._tokenizer = None
+        self._merged_model = None
 
         self.warmup()
 
@@ -82,25 +85,25 @@ class GroundedaiHallucination(Validator):
             "attn_implementation": attn_implementation,
             "torch_dtype": compute_dtype,
         }
-        if self.quantization:
+        if self._quantize:
             model_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
         base_model = AutoModelForCausalLM.from_pretrained(
             self.BASE_MODEL_ID, **model_kwargs
         )
 
-        self.base_model = base_model
-        self.tokenizer = tokenizer
+        self._base_model = base_model
+        self._tokenizer = tokenizer
 
     def merge_adapter(self, groundedai_eval_id: str):
         """Merges the PEFT adapter into the base model."""
         # TODO Error handling for adapter merging could be added here
         config = PeftConfig.from_pretrained(groundedai_eval_id)
         model_peft = PeftModel.from_pretrained(
-            self.base_model, groundedai_eval_id, config=config
+            self._base_model, groundedai_eval_id, config=config
         )
-        self.merged_model = model_peft.merge_and_unload()
-        if not self.quantization:
-            self.merged_model.to("cuda")
+        self._merged_model = model_peft.merge_and_unload()
+        if not self._quantize:
+            self._merged_model.to("cuda")
 
     def warmup(self):
         """Warmup the model by loading it and merging the adapter"""
@@ -120,8 +123,8 @@ class GroundedaiHallucination(Validator):
 
         pipe = pipeline(
             "text-generation",
-            model=self.merged_model,
-            tokenizer=self.tokenizer,
+            model=self._merged_model,
+            tokenizer=self._tokenizer,
         )
 
         generation_args = {
@@ -140,7 +143,7 @@ class GroundedaiHallucination(Validator):
         hallucination = self.run_model(
             value["query"], value["response"], value["reference"]
         )
-        if "yes" in hallucination:  # FIXME
+        if "yes" in hallucination:
             return FailResult(
                 error_message="{The provided input was classified as a hallucination}",
             )

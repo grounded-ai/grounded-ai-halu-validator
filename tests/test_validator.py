@@ -1,27 +1,51 @@
-# to run these, run 
-# make tests
-
-from guardrails import Guard
 import pytest
-from validator import ValidatorTemplate
+from guardrails import Guard
+from validator import GroundedaiHallucination
 
-# We use 'exception' as the validator's fail action,
-#  so we expect failures to always raise an Exception
-# Learn more about corrective actions here:
-#  https://www.guardrailsai.com/docs/concepts/output/#%EF%B8%8F-specifying-corrective-actions
-guard = Guard.from_string(validators=[ValidatorTemplate(arg_1="arg_1", arg_2="arg_2", on_fail="exception")])
+# Initialize the Guard with the GroundedaiHallucination validator
+guard = Guard.from_string(validators=[GroundedaiHallucination(quant=False)])
 
-def test_pass():
-  test_output = "pass"
-  result = guard.parse(test_output)
-  
-  assert result.validation_passed is True
-  assert result.validated_output == test_output
+def test_hallucination_pass():
+    test_input = {
+        "query": "What is the capital of France?",
+        "response": "The capital of France is Paris.",
+        "reference": "Paris is the capital and most populous city of France."
+    }
+    result = guard.parse(test_input)
+    
+    assert result.validation_passed is True
+    assert result.validated_output == test_input
 
-def test_fail():
-  with pytest.raises(Exception) as exc_info:
-    test_output = "fail"
-    guard.parse(test_output)
-  
-  # Assert the exception has your error_message
-  assert str(exc_info.value) == "Validation failed for field with errors: {A descriptive but concise error message about why validation failed}"
+def test_hallucination_fail():
+    with pytest.raises(Exception) as exc_info:
+        test_input = {
+            "query": "What is the capital of France?",
+            "response": "The capital of France is London.",
+            "reference": "Paris is the capital and most populous city of France."
+        }
+        guard.parse(test_input)
+    
+    # Assert the exception has your error_message
+    assert str(exc_info.value) == "Validation failed for field with errors: {The provided input was classified as a hallucination}"
+
+def test_no_reference():
+    test_input = {
+        "query": "Who was the first person to walk on the moon?",
+        "response": "Neil Armstrong was the first person to walk on the moon.",
+        "reference": ""
+    }
+    result = guard.parse(test_input)
+    
+    assert result.validation_passed is True
+    assert result.validated_output == test_input
+
+def test_complex_query():
+    test_input = {
+        "query": "Explain the process of photosynthesis.",
+        "response": "Photosynthesis is the process by which plants use sunlight, water, and carbon dioxide to produce oxygen and energy in the form of sugar.",
+        "reference": "Photosynthesis is a process used by plants and other organisms to convert light energy into chemical energy that can later be released to fuel the organism's activities."
+    }
+    result = guard.parse(test_input)
+    
+    assert result.validation_passed is True
+    assert result.validated_output == test_input
