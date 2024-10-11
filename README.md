@@ -68,17 +68,17 @@ Initializes a new instance of the GroundedAIHallucination class.
 
 **Parameters**
 - **`quant`** *(bool)*: Whether to use quantization for the model.
-- **`base_prompt`** *(Optional[str])*: The base prompt template for hallucination evaluation. Defaults to HALLUCINATION_EVAL_BASE.
+- **`base_prompt`** *(Optional[str])*: The base prompt template for hallucination evaluation. Defaults to HALLUCINATION_EVAL_BASE, but you may customize this to your need.
 - **`on_fail`** *(str, Callable)*: The policy to enact when a validator fails. If `str`, must be one of `reask`, `fix`, `filter`, `refrain`, `noop`, `exception` or `fix_reask`. Otherwise, must be a function that is called when the validator fails.
 </ul>
 <br/>
 
-**`validate(self, value: Dict, metadata: Dict = {}) -> ValidationResult`**
+**`validate(self, value: str, metadata: Dict = {}) -> ValidationResult`**
 <ul>
 Validates whether the given response is a hallucination based on the provided query and reference.
 
 **Parameters**
-- **`value`** *(Dict)*: A dictionary containing the following keys:
+- **`value`** *(str)*: A string (dictionary wrapped with json.dumps()) containing the following keys:
   - `query` (str): The original question or prompt.
   - `response` (str): The AI-generated response to validate.
   - `reference` (str): Optional reference information for fact-checking.
