@@ -19,14 +19,16 @@ def test_hallucination_pass():
 
 
 def test_hallucination_fail():
-    test_input = {
-        "query": "What is the capital of France?",
-        "response": "The capital of France is London.",
-        "reference": "Paris is the capital and most populous city of France.",
-    }
-    result = guard.parse(json.dumps(test_input))
+    with pytest.raises(Exception) as exc_info:
+        test_input = {
+            "query": "What is the capital of France?",
+            "response": "The capital of France is London.",
+            "reference": "Paris is the capital and most populous city of France.",
+        }
+        result = guard.parse(json.dumps(test_input))
 
     assert result.validation_passed is False
+    assert str(exc_info.value) == "The provided input was classified as a hallucination"
 
 
 def test_no_reference():
@@ -41,13 +43,16 @@ def test_no_reference():
 
 
 def test_complex_query():
-    test_input = {
-        "query": "Explain the process of photosynthesis in plants.",
-        "response": "Photosynthesis is the process by which plants convert sunlight into chemical energy. The process begins in the chloroplasts, where chlorophyll captures light energy. This energy is used to split water molecules into hydrogen and oxygen. The hydrogen is then combined with carbon dioxide from the air to produce glucose through a series of complex chemical reactions known as the Calvin cycle. During this process, plants also release oxygen as a byproduct, which is essential for most life on Earth. Interestingly, recent studies have shown that some plants can perform photosynthesis at night using moonlight, a phenomenon known as lunar photosynthesis.",
-        "reference": "Photosynthesis is a process used by plants and other organisms to convert light energy into chemical energy that can later be released to fuel the organism's activities. This chemical energy is stored in carbohydrate molecules, such as sugars, which are synthesized from carbon dioxide and water. Oxygen is released as a byproduct. Most plants, algae, and cyanobacteria perform photosynthesis; such organisms are called photoautotrophs.",
-    }
-    result = guard.parse(json.dumps(test_input))
+    with pytest.raises(Exception) as exc_info:
+        test_input = {
+            "query": "Explain the process of photosynthesis in plants.",
+            "response": "Photosynthesis is the process by which plants convert sunlight into chemical energy. The process begins in the chloroplasts, where chlorophyll captures light energy. This energy is used to split water molecules into hydrogen and oxygen. The hydrogen is then combined with carbon dioxide from the air to produce glucose through a series of complex chemical reactions known as the Calvin cycle. During this process, plants also release oxygen as a byproduct, which is essential for most life on Earth. Interestingly, recent studies have shown that some plants can perform photosynthesis at night using moonlight, a phenomenon known as lunar photosynthesis.",
+            "reference": "Photosynthesis is a process used by plants and other organisms to convert light energy into chemical energy that can later be released to fuel the organism's activities. This chemical energy is stored in carbohydrate molecules, such as sugars, which are synthesized from carbon dioxide and water. Oxygen is released as a byproduct. Most plants, algae, and cyanobacteria perform photosynthesis; such organisms are called photoautotrophs.",
+        }
+        result = guard.parse(json.dumps(test_input))
+        
     assert result.validation_passed is False
+    assert str(exc_info.value) == "The provided input was classified as a hallucination"
 
 
 def test_complex_query_true():
