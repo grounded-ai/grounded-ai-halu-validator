@@ -43,19 +43,19 @@ from guardrails import Guard
 
 guard = Guard().use(GroundedAIHallucination(quant=True))
 
-guard.validate({
+guard.validate(json.dumps({
     "query": "What is the capital of France?",
     "response": "The capital of France is London.",
     "reference": "The capital of France is Paris."
-}) 
+})) 
 
 >>> # Validator fails
 
-guard.validate({
+guard.validate(json.dumps({
     "query": "What is the capital of France?",
     "response": "The capital of France is Paris.",
     "reference": "The capital of France is Paris."
-}) 
+})) 
 
 >>> # Validator passes
 ```
