@@ -43,19 +43,30 @@ from guardrails import Guard
 
 guard = Guard().use(GroundedAIHallucination(quant=True))
 
-guard.validate(json.dumps({
+guard.validate("The capital of France is London.", metadata={
     "query": "What is the capital of France?",
-    "response": "The capital of France is London.",
     "reference": "The capital of France is Paris."
-})) 
+}) 
 
 >>> # Validator fails
 
-guard.validate(json.dumps({
+guard.validate("The capital of France is Paris.", metadata={
     "query": "What is the capital of France?",
-    "response": "The capital of France is Paris.",
     "reference": "The capital of France is Paris."
-})) 
+})
+
+>>> # Validator passes
+
+# with llm
+messages = [{"role":"user", "content":"What is the capital of France?"}]
+
+guard(
+  messages=messages,
+  model="gpt-4o-mini",
+  metadata={
+    "query": messages[0]["content"],
+    "reference": "The capital of France is Paris."
+})
 
 >>> # Validator passes
 ```
@@ -78,11 +89,10 @@ Initializes a new instance of the GroundedAIHallucination class.
 Validates whether the given response is a hallucination based on the provided query and reference.
 
 **Parameters**
-- **`value`** *(str)*: A string (dictionary wrapped with json.dumps()) containing the following keys:
-  - `query` (str): The original question or prompt.
-  - `response` (str): The AI-generated response to validate.
-  - `reference` (str): Optional reference information for fact-checking.
+- **`value`** *(str)*: A string The AI-generated response to validate.
 - **`metadata`** *(dict)*: Additional metadata (not used in this validator).
+  - `query` (str): The original question or prompt.
+  - `reference` (str): Optional reference information for fact-checking.
 
 **Returns**
 - **`ValidationResult`**: Indicates whether the validation passed or failed.
