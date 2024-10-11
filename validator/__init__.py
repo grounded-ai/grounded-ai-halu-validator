@@ -1,3 +1,3 @@
-from .main import ValidatorTemplate
+from .main import GroundedaiHallucination
 
-__all__ = ["ValidatorTemplate"]
+__all__ = ["GroundedaiHallucination"]

@@ -1,5 +1,4 @@
-from typing import Dict, Optional, Callable, Any
-import json
+from typing import Dict, Optional, Callable, Any, Union
 
 import torch
 from guardrails.validator_base import (
@@ -10,7 +9,7 @@ from guardrails.validator_base import (
     register_validator,
 )
 from jinja2 import Template
-from peft import PeftConfig, PeftModel
+from peft import PeftConfig, PeftModel # type: ignore
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -63,25 +62,39 @@ class GroundedaiHallucination(Validator):
         self,
         quant: bool,
         base_prompt: Optional[str] = HALLUCINATION_EVAL_BASE,
+        device: Optional[Union[str, int]] = -1,
         on_fail: Optional[Callable] = None,
+        **kwargs,
     ):
-        super().__init__()
+        super().__init__(
+            quant=quant,
+            base_prompt=base_prompt,
+            device=device,
+            on_fail=on_fail,
+            **kwargs,
+        )
         self._quantize = quant
         self._base_prompt = base_prompt
         self._base_model = None
         self._tokenizer = None
         self._merged_model = None
 
+        self._device = (
+            str(device).lower()
+            if str(device).lower() in ["cpu", "mps"]
+            else int(device) # type: ignore
+        )
+
         self.warmup()
 
     def load_model(self):
         """Loads the base model with or without quantization."""
-        compute_dtype = (
-            torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-        )
-        attn_implementation = (
-            "flash_attention_2" if torch.cuda.is_bf16_supported() else "sdpa"
-        )
+        compute_dtype = torch.float16
+        attn_implementation="sdpa"
+
+        if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+            compute_dtype = torch.bfloat16 
+            attn_implementation = "flash_attention_2"
 
         tokenizer = AutoTokenizer.from_pretrained(self.BASE_MODEL_ID)
         model_kwargs = {
@@ -102,10 +115,10 @@ class GroundedaiHallucination(Validator):
         # TODO Error handling for adapter merging could be added here
         config = PeftConfig.from_pretrained(groundedai_eval_id)
         model_peft = PeftModel.from_pretrained(
-            self._base_model, groundedai_eval_id, config=config
+            self._base_model, groundedai_eval_id, config=config # type: ignore
         )
         self._merged_model = model_peft.merge_and_unload()
-        if not self._quantize:
+        if not self._quantize and torch.cuda.is_available():
             self._merged_model.to("cuda")
 
     def warmup(self):
@@ -113,8 +126,8 @@ class GroundedaiHallucination(Validator):
         self.load_model()
         self.merge_adapter(self.GROUNDEDAI_EVAL_ID)
 
-    def format_input(self, query: str, response: str, reference: str = None) -> str:
-        template = Template(self._base_prompt)
+    def format_input(self, query: str, response: str, reference: Optional[str] = None) -> str:
+        template = Template(self._base_prompt) # type: ignore
         rendered_prompt = template.render(
             reference=reference, query=query, response=response
         )
@@ -127,6 +140,7 @@ class GroundedaiHallucination(Validator):
         pipe = pipeline(
             "text-generation",
             model=self._merged_model,
+            device=self._device,
             tokenizer=self._tokenizer,
         )
 
@@ -139,25 +153,19 @@ class GroundedaiHallucination(Validator):
 
         output = pipe(messages, **generation_args)
         torch.cuda.empty_cache()
-        return output[0]["generated_text"].strip().lower()
+        return output[0]["generated_text"].strip().lower() # type: ignore
 
-    def _validate(self, value: str, metadata: Dict[str, Any]) -> ValidationResult:
-        try:
-            input_dict = json.loads(value)
+    def _validate(self, value: str, metadata: Dict[str, Any], **kwargs) -> ValidationResult:
+        response = value
+        query = metadata.get("query", "")
+        reference = metadata.get("reference", "")
 
-            if not all(k in input_dict for k in ["query", "response", "reference"]):
-                return FailResult(
-                    error_message="Input must be a JSON string with 'query', 'response', and 'reference' keys."
-                )
+        hallucination = self.run_model(
+            query, response, reference
+        )
 
-            hallucination = self.run_model(
-                input_dict["query"], input_dict["response"], input_dict["reference"]
+        if "yes" in hallucination:
+            return FailResult(
+                error_message="The provided input was classified as a hallucination",
             )
-
-            if "yes" in hallucination:
-                return FailResult(
-                    error_message="The provided input was classified as a hallucination",
-                )
-            return PassResult()
-        except json.JSONDecodeError:
-            return FailResult(error_message="Input must be a valid JSON string.")
+        return PassResult()
