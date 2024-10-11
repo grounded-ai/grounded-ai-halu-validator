@@ -1,4 +1,5 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable, Any
+import json
 
 import torch
 from guardrails.validator_base import (
@@ -31,9 +32,9 @@ HALLUCINATION_EVAL_BASE = """
 """
 
 
-@register_validator(name="guardrails/grounded-ai-hallucination", data_type="string")
+@register_validator(name="guardrails/grounded-ai-hallucination", data_type="object")
 class GroundedaiHallucination(Validator):
-    """Validates whether a given response is a hallucination based on the provided query, response 
+    """Validates whether a given response is a hallucination based on the provided query, response
     and optional reference.
 
     This validator uses a fine-tuned language model by GroundedAI to determine if the response
@@ -52,7 +53,8 @@ class GroundedaiHallucination(Validator):
         base_prompt (Optional[str]): The base prompt template for hallucination evaluation.
             Defaults to HALLUCINATION_EVAL_BASE.
     """
-  # noqa
+
+    # noqa
 
     BASE_MODEL_ID = "microsoft/Phi-3-mini-4k-instruct"
     GROUNDEDAI_EVAL_ID = "grounded-ai/phi3.5-hallucination-judge"
@@ -61,6 +63,7 @@ class GroundedaiHallucination(Validator):
         self,
         quant: bool,
         base_prompt: Optional[str] = HALLUCINATION_EVAL_BASE,
+        on_fail: Optional[Callable] = None,
     ):
         super().__init__()
         self._quantize = quant
@@ -138,13 +141,23 @@ class GroundedaiHallucination(Validator):
         torch.cuda.empty_cache()
         return output[0]["generated_text"].strip().lower()
 
-    def validate(self, value: Dict, metadata: Dict = {}) -> ValidationResult:
-        """Validates that {fill in how you validator interacts with the passed value}."""
-        hallucination = self.run_model(
-            value["query"], value["response"], value["reference"]
-        )
-        if "yes" in hallucination:
-            return FailResult(
-                error_message="{The provided input was classified as a hallucination}",
+    def _validate(self, value: str, metadata: Dict[str, Any]) -> ValidationResult:
+        try:
+            input_dict = json.loads(value)
+
+            if not all(k in input_dict for k in ["query", "response", "reference"]):
+                return FailResult(
+                    error_message="Input must be a JSON string with 'query', 'response', and 'reference' keys."
+                )
+
+            hallucination = self.run_model(
+                input_dict["query"], input_dict["response"], input_dict["reference"]
             )
-        return PassResult()
+
+            if "yes" in hallucination:
+                return FailResult(
+                    error_message="The provided input was classified as a hallucination",
+                )
+            return PassResult()
+        except json.JSONDecodeError:
+            return FailResult(error_message="Input must be a valid JSON string.")
