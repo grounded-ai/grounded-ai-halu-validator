@@ -55,7 +55,7 @@ class GroundedaiHallucination(Validator):
 
     # noqa
 
-    BASE_MODEL_ID = "microsoft/Phi-3-mini-4k-instruct"
+    BASE_MODEL_ID = "microsoft/Phi-3.5-mini-instruct"
     GROUNDEDAI_EVAL_ID = "grounded-ai/phi3.5-hallucination-judge"
 
     def __init__(
