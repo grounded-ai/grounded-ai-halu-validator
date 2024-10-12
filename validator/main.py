@@ -9,7 +9,7 @@ from guardrails.validator_base import (
     register_validator,
 )
 from jinja2 import Template
-from peft import PeftConfig, PeftModel # type: ignore
+from peft import PeftConfig, PeftModel  # type: ignore
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -82,7 +82,7 @@ class GroundedaiHallucination(Validator):
         self._device = (
             str(device).lower()
             if str(device).lower() in ["cpu", "mps"]
-            else int(device) # type: ignore
+            else int(device)  # type: ignore
         )
 
         self.warmup()
@@ -90,10 +90,10 @@ class GroundedaiHallucination(Validator):
     def load_model(self):
         """Loads the base model with or without quantization."""
         compute_dtype = torch.float16
-        attn_implementation="sdpa"
+        attn_implementation = "sdpa"
 
         if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
-            compute_dtype = torch.bfloat16 
+            compute_dtype = torch.bfloat16
             attn_implementation = "flash_attention_2"
 
         tokenizer = AutoTokenizer.from_pretrained(self.BASE_MODEL_ID)
@@ -115,7 +115,9 @@ class GroundedaiHallucination(Validator):
         # TODO Error handling for adapter merging could be added here
         config = PeftConfig.from_pretrained(groundedai_eval_id)
         model_peft = PeftModel.from_pretrained(
-            self._base_model, groundedai_eval_id, config=config # type: ignore
+            self._base_model,
+            groundedai_eval_id,
+            config=config,  # type: ignore
         )
         self._merged_model = model_peft.merge_and_unload()
         if not self._quantize and torch.cuda.is_available():
@@ -126,8 +128,10 @@ class GroundedaiHallucination(Validator):
         self.load_model()
         self.merge_adapter(self.GROUNDEDAI_EVAL_ID)
 
-    def format_input(self, query: str, response: str, reference: Optional[str] = None) -> str:
-        template = Template(self._base_prompt) # type: ignore
+    def format_input(
+        self, query: str, response: str, reference: Optional[str] = None
+    ) -> str:
+        template = Template(self._base_prompt)  # type: ignore
         rendered_prompt = template.render(
             reference=reference, query=query, response=response
         )
@@ -153,16 +157,16 @@ class GroundedaiHallucination(Validator):
 
         output = pipe(messages, **generation_args)
         torch.cuda.empty_cache()
-        return output[0]["generated_text"].strip().lower() # type: ignore
+        return output[0]["generated_text"].strip().lower()  # type: ignore
 
-    def _validate(self, value: str, metadata: Dict[str, Any], **kwargs) -> ValidationResult:
+    def _validate(
+        self, value: str, metadata: Dict[str, Any], **kwargs
+    ) -> ValidationResult:
         response = value
         query = metadata.get("query", "")
         reference = metadata.get("reference", "")
 
-        hallucination = self.run_model(
-            query, response, reference
-        )
+        hallucination = self.run_model(query, response, reference)
 
         if "yes" in hallucination:
             return FailResult(
