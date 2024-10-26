@@ -28,7 +28,7 @@ This validator uses a fine-tuned language model to detect hallucinations in AI-g
 ## Installation
 
 ```bash
-$ guardrails hub install hub://guardrails/grounded-ai-hallucination
+$ guardrails hub install hub://groundedai/grounded_ai_hallucination
 ```
 
 ## Usage Examples
