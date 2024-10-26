@@ -1,3 +1,3 @@
-from .main import GroundedaiHallucination
+from .main import GroundedAIHallucination
 
-__all__ = ["GroundedaiHallucination"]
+__all__ = ["GroundedAIHallucination"]

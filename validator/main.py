@@ -32,7 +32,7 @@ HALLUCINATION_EVAL_BASE = """
 
 
 @register_validator(name="groundedai/grounded_ai_hallucination", data_type="object")
-class GroundedaiHallucination(Validator):
+class GroundedAIHallucination(Validator):
     """Validates whether a given response is a hallucination based on the provided query, response
     and optional reference.
 
