@@ -1,8 +1,8 @@
 import pytest
 from guardrails import Guard
-from validator import GroundedaiHallucination
+from validator import GroundedAIHallucination
 
-grounded_ai = GroundedaiHallucination(quant=False, on_fail="exception")
+grounded_ai = GroundedAIHallucination(quant=False, on_fail="exception")
 guard = Guard().use_many(grounded_ai)
 
 
