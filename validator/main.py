@@ -63,7 +63,7 @@ class GroundedAIHallucination(Validator):
         quant: bool,
         base_prompt: Optional[str] = HALLUCINATION_EVAL_BASE,
         device: Optional[Union[str, int]] = -1,
-        on_fail: Optional[Callable] = None,
+        on_fail: Optional[Callable] = "noop",
         **kwargs,
     ):
         super().__init__(
